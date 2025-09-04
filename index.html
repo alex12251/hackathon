@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Indian Cattle & Buffalo Recognition & Health Analyzer</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for Icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+    />
+    <style>
+      body {
+        background: linear-gradient(135deg, #ff9933, #ffffff, #128807);
+        /* Indian flag-inspired gradient */
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        min-height: 100vh;
+      }
+      .upload-zone {
+        border: 2px dashed #333;
+        transition: all 0.3s ease;
+      }
+      .upload-zone:hover {
+        border-color: #ff9933;
+        background-color: rgba(255, 153, 51, 0.1);
+      }
+      .result-card,
+      .health-card,
+      .symptom-card,
+      .about-card {
+        animation: fadeIn 0.5s ease-in-out;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .progress-bar {
+        width: 100%;
+        height: 4px;
+        background-color: #e0e0e0;
+      }
+      .progress-fill {
+        height: 100%;
+        background-color: #128807;
+        transition: width 0.5s ease;
+      }
+      .spinner {
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .health-bar {
+        height: 20px;
+        border-radius: 10px;
+        transition: width 1s ease;
+      }
+      .healthy {
+        background-color: #10b981;
+      }
+      .caution {
+        background-color: #f59e0b;
+      }
+      .danger {
+        background-color: #ef4444;
+      }
+      .symptom-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+      }
+      .rec-box {
+        background: linear-gradient(
+          135deg,
+          rgba(255, 255, 255, 0.9),
+          rgba(255, 255, 255, 0.5)
+        );
+        border-left: 4px solid #ff9933;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .upload-zone label {
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body class="text-white">
+    <header class="bg-green-800 py-4 shadow-lg">
+      <div class="container mx-auto text-center">
+        <h1 class="text-3xl font-bold">
+          <i class="fas fa-stethoscope mr-2"></i>Indian Cattle & Buffalo
+          Recognition & Health Analyzer
+        </h1>
+        <p class="mt-2">
+          Upload an image for breed identification and health assessment, or
+          select symptoms for medicine recommendations tailored to
+          India-specific cattle and buffalo.
+        </p>
+      </div>
+    </header>
+
+    <main class="container mx-auto py-8 px-4">
+      <!-- Upload Section -->
+      <section class="upload-section mb-8">
+        <div
+          class="bg-white text-black rounded-lg p-6 shadow-md max-w-md mx-auto"
+        >
+          <h2 class="text-xl font-semibold mb-4 text-center">Upload Image</h2>
+          <!-- Live Scanner UI -->
+          <div class="mb-4 text-center">
+            <button id="live-scan-btn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md font-semibold transition-colors mb-2">
+              <i class="fas fa-camera mr-2"></i>Live Scan
+            </button>
+            <div id="live-scan-container" class="hidden mt-2">
+              <video id="live-video" autoplay playsinline class="rounded-md mx-auto block max-h-48 border"></video>
+              <button id="capture-btn" class="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded-md font-semibold mt-2">
+                <i class="fas fa-camera"></i> Capture & Analyze
+              </button>
+              <button id="close-live-btn" class="bg-gray-400 hover:bg-gray-500 text-white py-1 px-3 rounded-md font-semibold mt-2 ml-2">
+                Close Scanner
+              </button>
+            </div>
+          </div>
+          <div
+            id="upload-zone"
+            class="upload-zone p-6 text-center cursor-pointer rounded-md mb-4"
+          >
+            <label for="file-input">
+              <i
+                class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2 block"
+              ></i>
+              <p class="block">Drag & drop or click to select an image file for full analysis</p>
+            </label>
+            <input
+              type="file"
+              id="file-input"
+              accept="image/*"
+              class="hidden"
+            />
+          </div>
+          <button
+            id="analyze-btn"
+            class="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-md font-semibold transition-colors"
+            disabled
+          >
+            Analyze Image 
+          </button>
+          <div id="progress-container" class="mt-4 hidden">
+            <div class="progress-bar mb-2">
+              <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+            </div>
+            <p id="progress-text" class="text-sm text-center">Analyzing...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Symptom Checker Section -->
+      <section class="symptom-section mb-8">
+        <div
+          class="bg-white text-black rounded-lg p-6 shadow-md max-w-4xl mx-auto"
+        >
+          <h2 class="text-xl font-semibold mb-4 text-center text-red-800">
+            Symptom Checker & Medicine Recommendation
+          </h2>
+          <p class="text-sm text-center mb-6 text-gray-600">
+            Select observed symptoms for personalized medicine recommendations.
+            This is a simulated tool for educational purposes; always consult a
+            veterinarian.
+          </p>
+          <form id="symptom-form">
+            <div class="symptom-list mb-6">
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="lethargy"
+                  name="symptom"
+                  value="lethargy"
+                  class="mr-2"
+                />
+                <label for="lethargy" class="text-sm">Lethargy / Dullness</label>
+              </div>
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="swelling"
+                  name="symptom"
+                  value="swelling"
+                  class="mr-2"
+                />
+                <label for="swelling" class="text-sm">Swelling in Body Parts</label>
+              </div>
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="diarrhea"
+                  name="symptom"
+                  value="diarrhea"
+                  class="mr-2"
+                />
+                <label for="diarrhea" class="text-sm">Diarrhea / Loose Motion</label>
+              </div>
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="fever"
+                  name="symptom"
+                  value="fever"
+                  class="mr-2"
+                />
+                <label for="fever" class="text-sm">High Fever / Fever</label>
+              </div>
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="lameness"
+                  name="symptom"
+                  value="lameness"
+                  class="mr-2"
+                />
+                <label for="lameness" class="text-sm">Lameness / Difficulty Walking</label>
+              </div>
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="skin-lesions"
+                  name="symptom"
+                  value="skin-lesions"
+                  class="mr-2"
+                />
+                <label for="skin-lesions" class="text-sm">Skin Lesions / Rashes</label>
+              </div>
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="reduced-milk"
+                  name="symptom"
+                  value="reduced-milk"
+                  class="mr-2"
+                />
+                <label for="reduced-milk" class="text-sm">Reduced Milk Production</label>
+              </div>
+              <div class="flex items-center">
+                <input
+                  type="checkbox"
+                  id="coughing"
+                  name="symptom"
+                  value="coughing"
+                  class="mr-2"
+                />
+                <label for="coughing" class="text-sm">Coughing / Respiratory Issues</label>
+              </div>
+            </div>
+            <button
+              type="submit"
+              id="check-btn"
+              class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md font-semibold transition-colors"
+            >
+              Check Symptoms & Get Recommendations
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Result Section -->
+      <section id="result-section" class="result-section hidden">
+        <div
+          class="bg-white text-black rounded-lg p-6 shadow-md max-w-lg mx-auto result-card mb-6"
+        >
+          <h2 class="text-xl font-semibold mb-4 text-center text-green-800">
+            Breed Recognition Result
+          </h2>
+          <div id="image-preview" class="text-center mb-4">
+            <img
+              id="preview-img"
+              src=""
+              alt="Uploaded image preview of cattle or buffalo showing characteristics for breed recognition and health analysis in Indian context"
+              class="rounded-md max-h-48 mx-auto block"
+              onerror="this.src='https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/d662fbfb-931b-4540-b6e6-dcaf44158069.png'"
+            />
+          </div>
+          <div id="result-details" class="mb-4">
+            <div id="spinner" class="flex justify-center mb-4">
+              <i class="fas fa-search spinner text-green-600 text-2xl"></i>
+            </div>
+            <p id="recognition-text" class="text-lg text-center hidden"></p>
+          </div>
+          <div id="breed-info" class="hidden">
+            <h3 class="font-semibold text-center text-green-800 mb-2">
+              Breed Characteristics
+            </h3>
+            <p id="breed-desc" class="text-sm text-gray-700"></p>
+            <p id="region" class="text-sm text-gray-700 mt-1"></p>
+          </div>
+        </div>
+
+        <!-- Health & Medical Section -->
+        <div
+          id="health-section"
+          class="health-card bg-white text-black rounded-lg p-6 shadow-md max-w-lg mx-auto hidden"
+        >
+          <h2 class="text-xl font-semibold mb-4 text-center text-blue-800">
+            Health & Medical Assessment
+          </h2>
+          <div id="health-spinner" class="flex justify-center mb-4">
+            <i class="fas fa-heartbeat spinner text-blue-600 text-2xl"></i>
+          </div>
+          <div id="health-details" class="hidden">
+            <div class="mb-4">
+              <h3 class="font-semibold text-blue-800 mb-2">Health Status</h3>
+              <div class="health-meter">
+                <div class="health-bar" id="health-bar" style="width: 0%"></div>
+              </div>
+              <p id="health-status" class="text-sm mt-2 text-center"></p>
+            </div>
+            <h3 class="font-semibold text-blue-800 mb-2">
+              Detected Issues & Recommendations
+            </h3>
+            <ul id="medical-list" class="text-sm text-gray-700 space-y-1"></ul>
+            <h3 class="font-semibold text-blue-800 mb-2 mt-4">
+              Vaccination Schedule
+            </h3>
+            <ul id="vaccination-list" class="text-sm text-gray-700 space-y-1"></ul>
+            <h3 class="font-semibold text-blue-800 mb-2 mt-4">General Medical Tips</h3>
+            <p id="medical-tips" class="text-sm text-gray-700"></p>
+          </div>
+          <button
+            id="download-btn"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md font-semibold transition-colors hidden mt-4"
+          >
+            Download Full Medical Report
+          </button>
+        </div>
+      </section>
+
+      <!-- Symptom Recommendation Section -->
+      <section id="symptom-rec-section" class="symptom-rec-section hidden">
+        <div
+          class="bg-white text-black rounded-lg p-6 shadow-md max-w-4xl mx-auto symptom-card"
+        >
+          <h2 class="text-xl font-semibold mb-4 text-center text-red-800">
+            Symptom-Based Medicine Recommendations
+          </h2>
+          <div id="symptom-spinner" class="flex justify-center mb-4">
+            <i class="fas fa-prescription-bottle spinner text-red-600 text-2xl"></i>
+          </div>
+          <div id="recommendations" class="hidden">
+            <div id="rec-container" class="space-y-4">
+              <!-- Recommendations will be inserted here -->
+            </div>
+            <p class="text-xs text-gray-500 mt-4 italic">
+              These are simulated recommendations based on common veterinary
+              practices for Indian cattle and buffalo. Always use prescribed
+              dosages and consult a qualified veterinarian. Over-the-counter use
+              may harm the animal.
+            </p>
+          </div>
+          <button
+            id="download-symptune-btn"
+            class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md font-semibold transition-colors hidden mt-4"
+          >
+            Download Symptom Report
+          </button>
+        </div>
+      </section>
+
+      <!-- About Section -->
+      <section class="about-section mt-12 mb-12">
+        <div
+          class="bg-white text-black rounded-lg p-6 shadow-md max-w-3xl mx-auto about-card"
+        >
+          <h2 class="text-2xl font-bold mb-4 text-center text-gray-800">About</h2>
+          <p class="text-center text-gray-700 text-lg">
+            Hi, I am <strong>Chandra Jeet Singh</strong> and I created this
+            website to help farmers and livestock owners in India identify cattle
+            and buffalo breeds, assess their health, and get medical recommendations.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="bg-gray-900 py-4 text-center mt-8">
+      <p>
+        © created for hackathon and for educational purposes. Consult a veterinarian for real medical advice and
+        prescriptions.
+      </p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.16.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0"></script>
+    <script>
+      // DOM elements
+      const fileInput = document.getElementById("file-input");
+      const uploadZone = document.getElementById("upload-zone");
+      const analyzeBtn = document.getElementById("analyze-btn");
+      const resultSection = document.getElementById("result-section");
+      const healthSection = document.getElementById("health-section");
+      const previewImg = document.getElementById("preview-img");
+      const liveScanBtn = document.getElementById('live-scan-btn');
+      const liveScanContainer = document.getElementById('live-scan-container');
+      const liveVideo = document.getElementById('live-video');
+      const captureBtn = document.getElementById('capture-btn');
+      const closeLiveBtn = document.getElementById('close-live-btn');
+      const spinner = document.getElementById('spinner');
+      const recognitionText = document.getElementById('recognition-text');
+      const breedInfo = document.getElementById('breed-info');
+      const breedDesc = document.getElementById('breed-desc');
+      const region = document.getElementById('region');
+      const healthSpinner = document.getElementById('health-spinner');
+      const healthDetails = document.getElementById('health-details');
+      const healthBar = document.getElementById('health-bar');
+      const healthStatus = document.getElementById('health-status');
+      const medicalList = document.getElementById('medical-list');
+      const vaccinationList = document.getElementById('vaccination-list');
+      const medicalTips = document.getElementById('medical-tips');
+      const downloadBtn = document.getElementById('download-btn');
+      const progressContainer = document.getElementById('progress-container');
+      const progressFill = document.getElementById('progress-fill');
+      const progressText = document.getElementById('progress-text');
+      const symptomForm = document.getElementById('symptom-form');
+      const symptomRecSection = document.getElementById('symptom-rec-section');
+      const symptomSpinner = document.getElementById('symptom-spinner');
+      const recommendations = document.getElementById('recommendations');
+      const recContainer = document.getElementById('rec-container');
+      const downloadSymBtn = document.getElementById('download-symptune-btn');
+
+      let mobilenetModel = null;
+      let liveStream = null;
+      let uploadedFile = null;
+      let breed = '';
+      let healthScore = 0;
+      let selectedSymptoms = [];
+
+      // Load MobileNet model once
+      let modelReady = false;
+      mobilenet.load().then(model => {
+        mobilenetModel = model;
+        modelReady = true;
+      });
+
+      // Helper to check if image is cattle/buffalo
+      async function isCattleOrBuffalo(imgElement) {
+        if (!mobilenetModel) return false;
+        const predictions = await mobilenetModel.classify(imgElement);
+        return predictions.some(pred =>
+          /cow|ox|buffalo|bull|calf/i.test(pred.className)
+        );
+      }
+
+      // Handle file upload and drag-drop
+      uploadZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        uploadZone.classList.add("bg-gray-100");
+      });
+      uploadZone.addEventListener("dragleave", () => {
+        uploadZone.classList.remove("bg-gray-100");
+      });
+      uploadZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        uploadZone.classList.remove("bg-gray-100");
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          handleFile(files[0]);
+        }
+      });
+      fileInput.addEventListener("change", (e) => {
+        if (e.target.files.length > 0) {
+          handleFile(e.target.files[0]);
+        }
+      });
+
+      async function handleFile(file) {
+        if (!file.type.startsWith("image/")) {
+          alert("Please upload a valid image file.");
+          return;
+        }
+        if (!modelReady) {
+          alert("Model is loading, please wait a moment.");
+          return;
+        }
+        uploadedFile = file;
+        analyzeBtn.disabled = true;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          previewImg.src = e.target.result;
+          previewImg.onload = async () => {
+            const valid = await isCattleOrBuffalo(previewImg);
+            if (!valid) {
+              uploadedFile = null;
+              analyzeBtn.disabled = true;
+              alert("Please upload cattle or buffalo image.");
+              previewImg.src = "";
+            } else {
+              analyzeBtn.disabled = false;
+            }
+          };
+        };
+        reader.readAsDataURL(file);
+      }
+
+      // Live scanner logic
+      liveScanBtn.addEventListener('click', async () => {
+        liveScanContainer.classList.remove('hidden');
+        uploadZone.classList.add('hidden');
+        analyzeBtn.disabled = true;
+        try {
+          liveStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: "environment" } }
+          });
+          liveVideo.srcObject = liveStream;
+        } catch (err) {
+          alert('Camera access denied or not available.');
+          liveScanContainer.classList.add('hidden');
+          uploadZone.classList.remove('hidden');
+        }
+      });
+
+      captureBtn.addEventListener('click', async () => {
+        if (!liveStream) return;
+        const canvas = document.createElement('canvas');
+        canvas.width = liveVideo.videoWidth;
+        canvas.height = liveVideo.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(liveVideo, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        previewImg.src = dataUrl;
+        previewImg.onload = async () => {
+          const valid = await isCattleOrBuffalo(previewImg);
+          if (!valid) {
+            uploadedFile = null;
+            analyzeBtn.disabled = true;
+            alert("Please scan cattle or buffalo image.");
+            previewImg.src = "";
+            return;
+          }
+          canvas.toBlob(blob => {
+            uploadedFile = new File([blob], 'live_scan.jpg', { type: 'image/jpeg' });
+            analyzeBtn.disabled = false;
+            liveScanContainer.classList.add('hidden');
+            uploadZone.classList.remove('hidden');
+          }, 'image/jpeg');
+        };
+      });
+
+      closeLiveBtn.addEventListener('click', () => {
+        liveScanContainer.classList.add('hidden');
+        uploadZone.classList.remove('hidden');
+        analyzeBtn.disabled = !uploadedFile;
+        if (liveStream) {
+          liveStream.getTracks().forEach(track => track.stop());
+          liveStream = null;
+          liveVideo.srcObject = null;
+        }
+      });
+
+      // Simulate analysis with canvas pixel inspection
+      analyzeBtn.addEventListener("click", () => {
+        if (!uploadedFile) return;
+
+        resultSection.classList.remove("hidden");
+        healthSection.classList.add("hidden");
+        spinner.classList.remove("hidden");
+        healthSpinner.classList.remove("hidden");
+        recognitionText.classList.add("hidden");
+        breedInfo.classList.add("hidden");
+        healthDetails.classList.add("hidden");
+        downloadBtn.classList.add("hidden");
+        progressContainer.classList.remove("hidden");
+        progressFill.style.width = "0%";
+
+        simulateProgress(0);
+
+        // Create canvas to analyze image
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imageData.data;
+
+          // Analysis for breed and health: Heuristic based on color, pixels, etc.
+          let totalR = 0, totalG = 0, totalB = 0, darkPixels = 0, lightPixels = 0;
+          for (let i = 0; i < data.length; i += 4) {
+            totalR += data[i];
+            totalG += data[i + 1];
+            totalB += data[i + 2];
+            const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+            if (brightness < 100) darkPixels++;
+            if (brightness > 200) lightPixels++;
+          }
+          const avgR = totalR / (data.length / 4);
+          const avgG = totalG / (data.length / 4);
+          const avgB = totalB / (data.length / 4);
+          const area = canvas.width * canvas.height;
+          const darkRatio = darkPixels / (data.length / 4);
+
+          // Breed classification
+          if (avgR > avgB && area > 300000) {
+            breed = 'Sahiwal Cow (Haryana, India)';
+            breedDesc.textContent = 'Known for high milk yield and drought resistance.';
+            region.textContent = 'Common in North India regions.';
+          } else if (avgG > avgR && avgB > avgG) {
+            breed = 'Murrah Buffalo (Punjab, India)';
+            breedDesc.textContent = 'Best for milk production, adaptable to various climates.';
+            region.textContent = 'Prevalent in Northern India.';
+          } else if (area < 200000) {
+            breed = 'Gir Cow (Gujarat, India)';
+            breedDesc.textContent = 'Disease-resistant, good for organic farming.';
+            region.textContent = 'Native to Western India.';
+          } else {
+            breed = 'Jaffarabadi Buffalo (Gujarat, India)';
+            breedDesc.textContent = 'Heavyweights with muscular build, milk producers.';
+            region.textContent = 'Found in Gujarat, India.';
+          }
+
+          // Health analysis (simulate)
+          healthScore = Math.max(50, 100 - (darkRatio * 100) - Math.random() * 20); // 50-100%
+          let healthStatusText, healthBarClass, issues = [], vaccinations = ['Foot-and-Mouth Disease (FMD)', 'Hemorrhagic Septicemia (HS)', 'Black Quarter'], tips = 'Ensure clean water, balanced diet, and regular veterinary check-ups. Monitor for signs of disease like swelling or lethargy.';
+
+          if (healthScore > 80) {
+            healthStatusText = 'Healthy';
+            healthBarClass = 'healthy';
+            issues = ['No major issues detected.'];
+          } else if (healthScore > 60) {
+            healthStatusText = 'Caution: Minor conditions';
+            healthBarClass = 'caution';
+            issues = ['Possible skin lesions - recommend veterinary inspection.', 'Check for nutritional deficiencies.'];
+          } else {
+            healthStatusText = 'Danger: Medical attention needed';
+            healthBarClass = 'danger';
+            issues = ['Potential infections like mastitis or lameness.', 'Urgent: Call a vet for antibiotics or anti-inflammatory drugs if applicable.'];
+            tips += ' Isolate if contagious.';
+          }
+
+          setTimeout(() => {
+            // Show recognition
+            spinner.classList.add('hidden');
+            recognitionText.textContent = `Recognized Breed: ${breed} - Confidence: ${(Math.random() * 20 + 80).toFixed(1)}%`;
+            recognitionText.classList.remove('hidden');
+            breedInfo.classList.remove('hidden');
+            healthSection.classList.remove('hidden');
+
+            // Show health after slight delay
+            setTimeout(() => {
+              healthSpinner.classList.add('hidden');
+              healthDetails.classList.remove('hidden');
+              healthBar.style.width = `${healthScore}%`;
+              healthBar.classList.remove('healthy', 'caution', 'danger');
+              healthBar.classList.add(healthBarClass);
+              healthStatus.textContent = healthStatusText;
+              medicalList.innerHTML = issues.map(item => `<li>${item}</li>`).join('');
+              vaccinationList.innerHTML = vaccinations.map(vac => `<li>• Yearly booster for ${vac} required.</li>`).join('');
+              medicalTips.textContent = tips;
+              downloadBtn.classList.remove('hidden');
+              progressContainer.classList.add('hidden');
+            }, 1000);
+          }, 2000);
+        };
+        img.src = URL.createObjectURL(uploadedFile);
+      });
+
+      function simulateProgress(progress) {
+        if (progress >= 100) return;
+        progress += Math.random() * 20 + 10;
+        if (progress > 100) progress = 100;
+        progressFill.style.width = `${progress}%`;
+        progressText.textContent = `Analyzing... ${Math.floor(progress)}%`;
+
+        setTimeout(() => simulateProgress(progress), 300);
+      }
+
+      // Symptom form submission
+      symptomForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        selectedSymptoms = [];
+        const checkboxes = symptomForm.querySelectorAll('input[name="symptom"]:checked');
+        checkboxes.forEach(cb => selectedSymptoms.push(cb.value));
+
+        if (selectedSymptoms.length === 0) {
+          alert('Please select at least one symptom.');
+          return;
+        }
+
+        symptomRecSection.classList.remove('hidden');
+        symptomSpinner.classList.remove('hidden');
+        recommendations.classList.add('hidden');
+        downloadSymBtn.classList.add('hidden');
+
+        setTimeout(() => generateRecommendations(), 2000);
+      });
+
+      function generateRecommendations() {
+        recContainer.innerHTML = '';
+        const recommendationsData = {
+          lethargy: { condition: 'Possible anemia or malnutrition.', medicine: 'Administer Vitamin B complex supplements and iron tonic. Consult vet for specific dosage.' },
+          swelling: { condition: 'Inflammation or edema.', medicine: 'Use non-steroidal anti-inflammatory drugs like Meloxicam (0.5 mg/kg body weight). Monitor closely.' },
+          diarrhea: { condition: 'Diarrhea - could be parasitic or bacterial.', medicine: 'Oral Rehydration Solution (ORS) and antibiotics like Norfloxacin if prescribed. Isolate animal.' },
+          fever: { condition: 'Fever - infectious cause likely.', medicine: 'Antipyretic like Paracetamol (10-15 mg/kg) and seek immediate veterinary attention.' },
+          lameness: { condition: 'Foot infection or injury.', medicine: 'Antibiotic ointments like Terramycin and pain relievers like phenylbutazone. Check for FMD.' },
+          'skin-lesions': { condition: 'Skin infection or ectoparasites.', medicine: 'Topical disinfectants and antiparasitic washes. If severe, systemic antibiotics.' },
+          'reduced-milk': { condition: 'Mastitis or hormonal imbalance.', medicine: 'Mastitis treatments like intramammary antibiotics. Ensure proper milking hygiene.' },
+          coughing: { condition: 'Respiratory infection.', medicine: 'Bronchodilators and expectorants. Vaccinate against HS and BQ.' }
+        };
+
+        selectedSymptoms.forEach(symptom => {
+          if (recommendationsData[symptom]) {
+            const recDiv = document.createElement('div');
+            recDiv.className = 'rec-box';
+            recDiv.innerHTML = `
+              <h4 class="font-bold text-gray-800 mb-2"><i class="fas fa-exclamation-triangle mr-1 text-red-500"></i>${recommendationsData[symptom].condition}</h4>
+              <p class="text-sm"><strong>Recommended Medicine:</strong> ${recommendationsData[symptom].medicine}</p>
+            `;
+            recContainer.appendChild(recDiv);
+          }
+        });
+
+        symptomSpinner.classList.add('hidden');
+        recommendations.classList.remove('hidden');
+        downloadSymBtn.classList.remove('hidden');
+      }
+
+      // Download reports
+      downloadBtn.addEventListener('click', () => {
+        if (!uploadedFile) {
+          alert("No file uploaded for report.");
+          return;
+        }
+        const issues = Array.from(medicalList.children).map(li => li.textContent).join('\n');
+        const vaccinations = Array.from(vaccinationList.children).map(li => li.textContent).join('\n');
+        const report = `Full Medical Report for ${breed}\n\nUploaded Image: ${uploadedFile.name}\nHealth Score: ${healthScore.toFixed(1)}%\nStatus: ${healthStatus.textContent}\n\nDetected Issues:\n${issues}\n\nVaccinations Needed:\n${vaccinations}\n\nMedical Tips:\n${medicalTips.textContent}\n\nDate: ${new Date().toLocaleDateString()}\n\nDisclaimer: This is a simulated analysis. Consult a professional veterinarian for real health advice.`;
+        const blob = new Blob([report], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'medical_report.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+
+      downloadSymBtn.addEventListener('click', () => {
+        const recs = Array.from(recContainer.children).map(div => div.textContent.replace(/\s+/g, ' ').trim()).join('\n\n');
+        const report = `Symptom-Based Medicine Report\n\nSelected Symptoms: ${selectedSymptoms.join(', ')}\n\nRecommendations:\n${recs}\n\nDate: ${new Date().toLocaleDateString()}\n\nDisclaimer: Simulated for educational purposes. Consult veterinarian for prescriptions.`;
+        const blob = new Blob([report], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'symptom_report.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    </script>
+  </body>
+</html>

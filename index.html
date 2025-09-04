@@ -442,6 +442,8 @@
       const recommendations = document.getElementById('recommendations');
       const recContainer = document.getElementById('rec-container');
       const downloadSymBtn = document.getElementById('download-symptune-btn');
+      const cameraChangerBtn = document.getElementById('camera-changer-btn');
+      let currentFacingMode = "environment"; // Start with back camera
 
       let mobilenetModel = null;
       let liveStream = null;
@@ -517,23 +519,50 @@
         reader.readAsDataURL(file);
       }
 
-      // Live scanner logic
+      // Show/hide Analyze button based on live scanner state
+      function setAnalyzeBtnVisibility(isLiveScannerActive) {
+        analyzeBtn.style.display = isLiveScannerActive ? "none" : "";
+      }
+
+      // Open live scanner
       liveScanBtn.addEventListener('click', async () => {
         liveScanContainer.classList.remove('hidden');
         uploadZone.classList.add('hidden');
+        setAnalyzeBtnVisibility(true);
         analyzeBtn.disabled = true;
         try {
           liveStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: "environment" } }
+            video: { facingMode: { ideal: currentFacingMode } }
           });
           liveVideo.srcObject = liveStream;
         } catch (err) {
           alert('Camera access denied or not available.');
           liveScanContainer.classList.add('hidden');
           uploadZone.classList.remove('hidden');
+          setAnalyzeBtnVisibility(false);
         }
       });
 
+      // Camera changer logic
+      cameraChangerBtn.addEventListener('click', async () => {
+        // Toggle between 'user' (front) and 'environment' (back)
+        currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
+        if (liveStream) {
+          liveStream.getTracks().forEach(track => track.stop());
+          liveStream = null;
+          liveVideo.srcObject = null;
+        }
+        try {
+          liveStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: currentFacingMode } }
+          });
+          liveVideo.srcObject = liveStream;
+        } catch (err) {
+          alert('Unable to switch camera.');
+        }
+      });
+
+      // Capture frame and analyze
       captureBtn.addEventListener('click', async () => {
         if (!liveStream) return;
         const canvas = document.createElement('canvas');
@@ -557,13 +586,18 @@
             analyzeBtn.disabled = false;
             liveScanContainer.classList.add('hidden');
             uploadZone.classList.remove('hidden');
+            setAnalyzeBtnVisibility(false);
+            // Optionally, auto-analyze after capture:
+            analyzeBtn.click();
           }, 'image/jpeg');
         };
       });
 
+      // Close live scanner
       closeLiveBtn.addEventListener('click', () => {
         liveScanContainer.classList.add('hidden');
         uploadZone.classList.remove('hidden');
+        setAnalyzeBtnVisibility(false);
         analyzeBtn.disabled = !uploadedFile;
         if (liveStream) {
           liveStream.getTracks().forEach(track => track.stop());

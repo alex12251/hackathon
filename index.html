@@ -131,7 +131,7 @@
             <button id="live-scan-btn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md font-semibold transition-colors mb-2">
               <i class="fas fa-camera mr-2"></i>Live Scan
             </button>
-            <div id="live-scan-container" class="mt-2">
+            <div id="live-scan-container" class="mt-2 hidden">
               <button id="camera-changer-btn" class="bg-gray-700 hover:bg-gray-800 text-white py-1 px-3 rounded-md font-semibold mb-2">
                 <i class="fas fa-sync-alt"></i> Switch Camera
               </button>
@@ -408,8 +408,6 @@
       </p>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.16.0"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0"></script>
     <script>
       // DOM elements
       const fileInput = document.getElementById("file-input");
@@ -446,29 +444,96 @@
       const recContainer = document.getElementById('rec-container');
       const downloadSymBtn = document.getElementById('download-symptune-btn');
       const cameraChangerBtn = document.getElementById('camera-changer-btn');
-      let currentFacingMode = "environment"; // Start with back camera
 
-      let mobilenetModel = null;
+      let currentFacingMode = "environment"; // Start with back camera
       let liveStream = null;
       let uploadedFile = null;
       let breed = '';
       let healthScore = 0;
       let selectedSymptoms = [];
 
-      // Load MobileNet model once
-      let modelReady = false;
-      mobilenet.load().then(model => {
-        mobilenetModel = model;
-        modelReady = true;
-      });
+      // A4F API configuration
+      const a4fApiKey = "ddc-a4f-0a91e899b40844f1968ad93283b89a1e";
+      const a4fBaseUrl = "https://api.a4f.co/v1";
+      const model = "provider-3/gemini-2.5-flash-image-preview";
 
-      // Helper to check if image is cattle/buffalo
-      async function isCattleOrBuffalo(imgElement) {
-        if (!mobilenetModel) return false;
-        const predictions = await mobilenetModel.classify(imgElement);
-        return predictions.some(pred =>
-          /cow|ox|buffalo|bull|calf/i.test(pred.className)
-        );
+      // Function to check if image contains cattle or buffalo using A4F API
+      async function isCattleOrBuffalo(imageData) {
+        try {
+          const response = await fetch(`${a4fBaseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${a4fApiKey}`
+            },
+            body: JSON.stringify({
+              model: model,
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    {
+                      type: "text",
+                      text: "Does this image contain a cow, cattle, or buffalo? Please respond with only 'yes' or 'no'."
+                    },
+                    {
+                      type: "image_url",
+                      image_url: {
+                        url: imageData
+                      }
+                    }
+                  ]
+                }
+              ],
+              max_tokens: 10
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+          }
+
+          const data = await response.json();
+          const answer = data.choices[0].message.content.toLowerCase();
+          
+          return answer.includes('yes');
+        } catch (error) {
+          console.error("Error calling A4F API:", error);
+          // Fallback to client-side validation if API fails
+          return fallbackImageValidation(previewImg);
+        }
+      }
+
+      // Fallback validation using simple image characteristics
+      function fallbackImageValidation(imgElement) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = imgElement.width;
+        canvas.height = imgElement.height;
+        ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+        
+        // Simple validation based on color distribution
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        let totalR = 0, totalG = 0, totalB = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          totalR += data[i];
+          totalG += data[i + 1];
+          totalB += data[i + 2];
+        }
+        
+        const avgR = totalR / (data.length / 4);
+        const avgG = totalG / (data.length / 4);
+        const avgB = totalB / (data.length / 4);
+        
+        // Cattle/buffalo typically have brown, black, or white coloring
+        // Check for typical cattle colors
+        const isBrownish = (avgR > 100 && avgG > 70 && avgG < 150 && avgB < 100);
+        const isBlackish = (avgR < 100 && avgG < 100 && avgB < 100);
+        const isWhitish = (avgR > 180 && avgG > 180 && avgB > 180);
+        
+        return isBrownish || isBlackish || isWhitish;
       }
 
       // Handle file upload and drag-drop
@@ -498,21 +563,21 @@
           alert("Please upload a valid image file.");
           return;
         }
-        if (!modelReady) {
-          alert("Model is loading, please wait a moment.");
-          return;
-        }
+        
         uploadedFile = file;
         analyzeBtn.disabled = true;
+        
         const reader = new FileReader();
         reader.onload = async (e) => {
           previewImg.src = e.target.result;
           previewImg.onload = async () => {
-            const valid = await isCattleOrBuffalo(previewImg);
-            if (!valid) {
+            // First validate if the image contains cattle or buffalo
+            const isValid = await isCattleOrBuffalo(previewImg.src);
+            
+            if (!isValid) {
               uploadedFile = null;
               analyzeBtn.disabled = true;
-              alert("Please upload cattle or buffalo image.");
+              alert("Please upload an image of cattle or buffalo.");
               previewImg.src = "";
             } else {
               analyzeBtn.disabled = false;
@@ -576,22 +641,23 @@
         const dataUrl = canvas.toDataURL('image/jpeg');
         previewImg.src = dataUrl;
         previewImg.onload = async () => {
-          const valid = await isCattleOrBuffalo(previewImg);
-          if (!valid) {
+          // Validate if the captured image contains cattle or buffalo
+          const isValid = await isCattleOrBuffalo(previewImg.src);
+          
+          if (!isValid) {
             uploadedFile = null;
             analyzeBtn.disabled = true;
             alert("Please scan cattle or buffalo image.");
             previewImg.src = "";
             return;
           }
+          
           canvas.toBlob(blob => {
             uploadedFile = new File([blob], 'live_scan.jpg', { type: 'image/jpeg' });
             analyzeBtn.disabled = false;
             liveScanContainer.classList.add('hidden');
             uploadZone.classList.remove('hidden');
             setAnalyzeBtnVisibility(false);
-            // Optionally, auto-analyze after capture:
-            analyzeBtn.click();
           }, 'image/jpeg');
         };
       });
@@ -808,5 +874,5 @@
         URL.revokeObjectURL(url);
       });
     </script>
-  </body>
+  </body>
 </html>

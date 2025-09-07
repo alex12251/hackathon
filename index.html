@@ -408,7 +408,7 @@
       </p>
     </footer>
 
-    <script>
+        <script>
       // DOM elements
       const fileInput = document.getElementById("file-input");
       const uploadZone = document.getElementById("upload-zone");
@@ -445,19 +445,42 @@
       const downloadSymBtn = document.getElementById('download-symptune-btn');
       const cameraChangerBtn = document.getElementById('camera-changer-btn');
 
-      let currentFacingMode = "environment"; // Start with back camera
+      let currentFacingMode = "environment";
       let liveStream = null;
       let uploadedFile = null;
       let breed = '';
       let healthScore = 0;
       let selectedSymptoms = [];
 
-      // A4F API configuration
+      // Simulated breed database for demo
+      const breedList = [
+        {
+          name: 'Sahiwal Cow (Haryana, India)',
+          desc: 'Known for high milk yield and drought resistance.',
+          region: 'Common in North India regions.'
+        },
+        {
+          name: 'Murrah Buffalo (Punjab, India)',
+          desc: 'Best for milk production, adaptable to various climates.',
+          region: 'Prevalent in Northern India.'
+        },
+        {
+          name: 'Gir Cow (Gujarat, India)',
+          desc: 'Disease-resistant, good for organic farming.',
+          region: 'Native to Western India.'
+        },
+        {
+          name: 'Jaffarabadi Buffalo (Gujarat, India)',
+          desc: 'Heavyweights with muscular build, milk producers.',
+          region: 'Found in Gujarat, India.'
+        }
+      ];
+
+      // A4F API configuration (unchanged)
       const a4fApiKey = "ddc-a4f-0a91e899b40844f1968ad93283b89a1e";
       const a4fBaseUrl = "https://api.a4f.co/v1";
       const model = "provider-3/gemini-2.5-flash-image-preview";
 
-      // Function to check if image contains cattle or buffalo using A4F API
       async function isCattleOrBuffalo(imageData) {
         try {
           const response = await fetch(`${a4fBaseUrl}/chat/completions`, {
@@ -495,48 +518,41 @@
 
           const data = await response.json();
           const answer = data.choices[0].message.content.toLowerCase();
-          
           return answer.includes('yes');
         } catch (error) {
           console.error("Error calling A4F API:", error);
-          // Fallback to client-side validation if API fails
           return fallbackImageValidation(previewImg);
         }
       }
 
-      // Fallback validation using simple image characteristics
       function fallbackImageValidation(imgElement) {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         canvas.width = imgElement.width;
         canvas.height = imgElement.height;
         ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
-        
-        // Simple validation based on color distribution
+
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
         const data = imageData.data;
-        
+
         let totalR = 0, totalG = 0, totalB = 0;
         for (let i = 0; i < data.length; i += 4) {
           totalR += data[i];
           totalG += data[i + 1];
           totalB += data[i + 2];
         }
-        
+
         const avgR = totalR / (data.length / 4);
         const avgG = totalG / (data.length / 4);
         const avgB = totalB / (data.length / 4);
-        
-        // Cattle/buffalo typically have brown, black, or white coloring
-        // Check for typical cattle colors
+
         const isBrownish = (avgR > 100 && avgG > 70 && avgG < 150 && avgB < 100);
         const isBlackish = (avgR < 100 && avgG < 100 && avgB < 100);
         const isWhitish = (avgR > 180 && avgG > 180 && avgB > 180);
-        
+
         return isBrownish || isBlackish || isWhitish;
       }
 
-      // Handle file upload and drag-drop
       uploadZone.addEventListener("dragover", (e) => {
         e.preventDefault();
         uploadZone.classList.add("bg-gray-100");
@@ -563,17 +579,15 @@
           alert("Please upload a valid image file.");
           return;
         }
-        
         uploadedFile = file;
         analyzeBtn.disabled = true;
-        
+
         const reader = new FileReader();
         reader.onload = async (e) => {
           previewImg.src = e.target.result;
           previewImg.onload = async () => {
-            // First validate if the image contains cattle or buffalo
             const isValid = await isCattleOrBuffalo(previewImg.src);
-            
+
             if (!isValid) {
               uploadedFile = null;
               analyzeBtn.disabled = true;
@@ -587,12 +601,10 @@
         reader.readAsDataURL(file);
       }
 
-      // Show/hide Analyze button based on live scanner state
       function setAnalyzeBtnVisibility(isLiveScannerActive) {
         analyzeBtn.style.display = isLiveScannerActive ? "none" : "";
       }
 
-      // Open live scanner
       liveScanBtn.addEventListener('click', async () => {
         liveScanContainer.classList.remove('hidden');
         uploadZone.classList.add('hidden');
@@ -611,9 +623,7 @@
         }
       });
 
-      // Camera changer logic
       cameraChangerBtn.addEventListener('click', async () => {
-        // Toggle between 'user' (front) and 'environment' (back)
         currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
         if (liveStream) {
           liveStream.getTracks().forEach(track => track.stop());
@@ -630,7 +640,6 @@
         }
       });
 
-      // Capture frame and analyze
       captureBtn.addEventListener('click', async () => {
         if (!liveStream) return;
         const canvas = document.createElement('canvas');
@@ -641,9 +650,8 @@
         const dataUrl = canvas.toDataURL('image/jpeg');
         previewImg.src = dataUrl;
         previewImg.onload = async () => {
-          // Validate if the captured image contains cattle or buffalo
           const isValid = await isCattleOrBuffalo(previewImg.src);
-          
+
           if (!isValid) {
             uploadedFile = null;
             analyzeBtn.disabled = true;
@@ -651,7 +659,7 @@
             previewImg.src = "";
             return;
           }
-          
+
           canvas.toBlob(blob => {
             uploadedFile = new File([blob], 'live_scan.jpg', { type: 'image/jpeg' });
             analyzeBtn.disabled = false;
@@ -662,7 +670,6 @@
         };
       });
 
-      // Close live scanner
       closeLiveBtn.addEventListener('click', () => {
         liveScanContainer.classList.add('hidden');
         uploadZone.classList.remove('hidden');
@@ -675,7 +682,6 @@
         }
       });
 
-      // Simulate analysis with canvas pixel inspection
       analyzeBtn.addEventListener("click", () => {
         if (!uploadedFile) return;
 
@@ -692,7 +698,6 @@
 
         simulateProgress(0);
 
-        // Create canvas to analyze image
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const img = new Image();
@@ -703,7 +708,6 @@
           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
           const data = imageData.data;
 
-          // Analysis for breed and health: Heuristic based on color, pixels, etc.
           let totalR = 0, totalG = 0, totalB = 0, darkPixels = 0, lightPixels = 0;
           for (let i = 0; i < data.length; i += 4) {
             totalR += data[i];
@@ -719,28 +723,26 @@
           const area = canvas.width * canvas.height;
           const darkRatio = darkPixels / (data.length / 4);
 
-          // Breed classification
-          if (avgR > avgB && area > 300000) {
-            breed = 'Sahiwal Cow (Haryana, India)';
-            breedDesc.textContent = 'Known for high milk yield and drought resistance.';
-            region.textContent = 'Common in North India regions.';
-          } else if (avgG > avgR && avgB > avgG) {
-            breed = 'Murrah Buffalo (Punjab, India)';
-            breedDesc.textContent = 'Best for milk production, adaptable to various climates.';
-            region.textContent = 'Prevalent in Northern India.';
-          } else if (area < 200000) {
-            breed = 'Gir Cow (Gujarat, India)';
-            breedDesc.textContent = 'Disease-resistant, good for organic farming.';
-            region.textContent = 'Native to Western India.';
-          } else {
-            breed = 'Jaffarabadi Buffalo (Gujarat, India)';
-            breedDesc.textContent = 'Heavyweights with muscular build, milk producers.';
-            region.textContent = 'Found in Gujarat, India.';
-          }
+          // Show multiple possible breeds with confidence scores
+          let breedResults = [];
+          breedResults.push({
+            ...breedList[0],
+            conf: (80 + Math.random() * 10).toFixed(1)
+          });
+          breedResults.push({
+            ...breedList[1],
+            conf: (60 + Math.random() * 15).toFixed(1)
+          });
+          breedResults.push({
+            ...breedList[2],
+            conf: (40 + Math.random() * 20).toFixed(1)
+          });
+          breedResults.sort((a, b) => b.conf - a.conf);
 
-          // Health analysis (simulate)
-          healthScore = Math.max(50, 100 - (darkRatio * 100) - Math.random() * 20); // 50-100%
-          let healthStatusText, healthBarClass, issues = [], vaccinations = ['Foot-and-Mouth Disease (FMD)', 'Hemorrhagic Septicemia (HS)', 'Black Quarter'], tips = 'Ensure clean water, balanced diet, and regular veterinary check-ups. Monitor for signs of disease like swelling or lethargy.';
+          breed = breedResults[0].name;
+          healthScore = Math.max(50, 100 - (darkRatio * 100) - Math.random() * 20);
+
+          let healthStatusText, healthBarClass, issues = [], vaccinations = ['Foot-and-Mouth Disease (FMD)', 'Hemorrhagic Septicemia (HS)', 'Black Quarter'], tips = 'Ensure clean water, balanced diet, regular checkups.';
 
           if (healthScore > 80) {
             healthStatusText = 'Healthy';
@@ -758,14 +760,17 @@
           }
 
           setTimeout(() => {
-            // Show recognition
             spinner.classList.add('hidden');
-            recognitionText.textContent = `Recognized Breed: ${breed} - Confidence: ${(Math.random() * 20 + 80).toFixed(1)}%`;
+            recognitionText.innerHTML = breedResults.map(b =>
+              `<div><strong>${b.name}</strong> - Confidence: ${b.conf}%<br>
+                <span class="text-xs text-gray-700">${b.desc} <br>${b.region}</span></div>`
+            ).join('<hr>');
             recognitionText.classList.remove('hidden');
             breedInfo.classList.remove('hidden');
+            breedDesc.textContent = breedList.find(b => b.name === breed).desc;
+            region.textContent = breedList.find(b => b.name === breed).region;
             healthSection.classList.remove('hidden');
 
-            // Show health after slight delay
             setTimeout(() => {
               healthSpinner.classList.add('hidden');
               healthDetails.classList.remove('hidden');
@@ -778,23 +783,22 @@
               medicalTips.textContent = tips;
               downloadBtn.classList.remove('hidden');
               progressContainer.classList.add('hidden');
-            }, 1000);
-          }, 2000);
+            }, 300);
+          }, 600);
         };
         img.src = URL.createObjectURL(uploadedFile);
       });
 
       function simulateProgress(progress) {
         if (progress >= 100) return;
-        progress += Math.random() * 20 + 10;
+        progress += Math.random() * 40 + 20;
         if (progress > 100) progress = 100;
         progressFill.style.width = `${progress}%`;
         progressText.textContent = `Analyzing... ${Math.floor(progress)}%`;
 
-        setTimeout(() => simulateProgress(progress), 300);
+        setTimeout(() => simulateProgress(progress), 100);
       }
 
-      // Symptom form submission
       symptomForm.addEventListener('submit', (e) => {
         e.preventDefault();
         selectedSymptoms = [];
@@ -811,7 +815,7 @@
         recommendations.classList.add('hidden');
         downloadSymBtn.classList.add('hidden');
 
-        setTimeout(() => generateRecommendations(), 2000);
+        setTimeout(() => generateRecommendations(), 900);
       });
 
       function generateRecommendations() {
@@ -844,7 +848,6 @@
         downloadSymBtn.classList.remove('hidden');
       }
 
-      // Download reports
       downloadBtn.addEventListener('click', () => {
         if (!uploadedFile) {
           alert("No file uploaded for report.");
@@ -852,7 +855,7 @@
         }
         const issues = Array.from(medicalList.children).map(li => li.textContent).join('\n');
         const vaccinations = Array.from(vaccinationList.children).map(li => li.textContent).join('\n');
-        const report = `Full Medical Report for ${breed}\n\nUploaded Image: ${uploadedFile.name}\nHealth Score: ${healthScore.toFixed(1)}%\nStatus: ${healthStatus.textContent}\n\nDetected Issues:\n${issues}\n\nVaccinations Needed:\n${vaccinations}\n\nMedical Tips:\n${medicalTips.textContent}\n\nDate: ${new Date().toLocaleDateString()}\n\nDisclaimer: This is a simulated analysis. Consult a professional veterinarian for real health advice.`;
+        const report = `Full Medical Report for ${breed}\n\nUploaded Image: ${uploadedFile.name}\nHealth Score: ${healthScore.toFixed(1)}%\nStatus: ${healthStatus.textContent}\n\nDetected Issues:\n${issues}\n\nVaccinations:\n${vaccinations}\n\nTips:\n${medicalTips.textContent}`;
         const blob = new Blob([report], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -864,7 +867,7 @@
 
       downloadSymBtn.addEventListener('click', () => {
         const recs = Array.from(recContainer.children).map(div => div.textContent.replace(/\s+/g, ' ').trim()).join('\n\n');
-        const report = `Symptom-Based Medicine Report\n\nSelected Symptoms: ${selectedSymptoms.join(', ')}\n\nRecommendations:\n${recs}\n\nDate: ${new Date().toLocaleDateString()}\n\nDisclaimer: Simulated for educational purposes. Consult veterinarian for prescriptions.`;
+        const report = `Symptom-Based Medicine Report\n\nSelected Symptoms: ${selectedSymptoms.join(', ')}\n\nRecommendations:\n${recs}\n\nDate: ${new Date().toLocaleDateString()}\n\nDisclaimer: Simulated recommendations.`;
         const blob = new Blob([report], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
